@@ -1,5 +1,4 @@
-# gtin13-validator
-GTIN-13 / ISBN Validator
+# GTIN-13 / ISBN Validator
 
 ![Preview Screenshot](preview.jpg)
 
