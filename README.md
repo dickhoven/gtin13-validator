@@ -1,5 +1,5 @@
 # gtin13-validator
-GTIN-13 Validator
+GTIN-13 / ISBN Validator
 
 GTIN-13 ist ein 13-stelliger Strichcode, der weltweit zur Produktidentifizierung verwendet wird. Die letzte Ziffer ist eine Prüfziffer, die aus den anderen 12 Ziffern berechnet wird.
 
