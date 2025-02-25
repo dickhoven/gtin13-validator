@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTIN-13 Validator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background-color: #333;
+        }
+        
+        .container {
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        input {
+            padding: 10px;
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .valid {
+            background-color: #dff0d8;
+            color: #3c763d;
+            border: 1px solid #d6e9c6;
+        }
+        
+        .invalid {
+            background-color: #f2dede;
+            color: #a94442;
+            border: 1px solid #ebccd1;
+        }
+        
+        .details {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .suggestion {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        .correct-code {
+            background-color: #fcf8e3;
+            padding: 5px;
+            border-radius: 3px;
+            border: 1px solid #faebcc;
+            display: inline-block;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>GTIN-13 Validator</h1>
+        
+        <div class="input-group">
+            <label for="gtin-input">GTIN-13 eingeben:</label>
+            <input type="text" id="gtin-input" placeholder="z.B., 9783866996779 or 978-3-86699-677-9">
+        </div>
+        
+        <button id="validate-button">Validieren</button>
+        
+        <div id="result" class="result"></div>
+        
+        <div class="details">
+            <h3>Über GTIN-13:</h3>
+            <p>GTIN-13 ist ein 13-stelliger Strichcode, der weltweit zur Produktidentifizierung verwendet wird. Die letzte Ziffer ist eine Prüfziffer, die aus den anderen 12 Ziffern berechnet wird.</p>
+            <p>Dieser Validator entfernt automatisch Bindestriche und Leerzeichen aus Ihrer Eingabe.</p>
+            <p>Wenn die Prüfziffer falsch ist, wird die richtige Prüfziffer vorgeschlagen.</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputEl = document.getElementById('gtin-input');
+            const buttonEl = document.getElementById('validate-button');
+            const resultEl = document.getElementById('result');
+            
+            buttonEl.addEventListener('click', function() {
+                validateInput();
+            });
+            
+            inputEl.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    validateInput();
+                }
+            });
+            
+            function validateInput() {
+                // Get the input and remove dashes, spaces, and any other non-digit characters
+                const rawInput = inputEl.value;
+                const cleanInput = rawInput.replace(/[^0-9]/g, '');
+                
+                if (cleanInput.length === 0) {
+                    showResult(false, "Bitte geben Sie einen GTIN-13 Code ein.");
+                    return;
+                }
+                
+                if (cleanInput.length !== 13) {
+                    showResult(false, `Die Eingabe muss 13-stellig sein. Sie haben ${cleanInput.length} Ziffern eingegeben.`);
+                    return;
+                }
+                
+                const { isValid, correctCheckDigit } = validateGTIN13(cleanInput);
+                
+                if (isValid) {
+                    showResult(true, `${rawInput} ist ein gültiger GTIN-13-Code.`);
+                } else {
+                    const firstTwelveDigits = cleanInput.substring(0, 12);
+                    const correctCode = firstTwelveDigits + correctCheckDigit;
+                    
+                    let resultHTML = `${rawInput} ist kein gültiger GTIN-13 Code. Die Überprüfung der Prüfziffer ist fehlgeschlagen.`;
+                    resultHTML += `<div class="suggestion">Die richtige Prüfziffer sollte ${correctCheckDigit} sein.</div>`;
+                    resultHTML += `<div class="suggestion">Der korrekte GTIN-13 Code wäre:</div>`;
+                    resultHTML += `<div class="correct-code">${correctCode}</div>`;
+                    
+                    showResultHTML(false, resultHTML);
+                }
+            }
+            
+            function showResult(isValid, message) {
+                resultEl.textContent = message;
+                resultEl.style.display = 'block';
+                
+                if (isValid) {
+                    resultEl.className = 'result valid';
+                } else {
+                    resultEl.className = 'result invalid';
+                }
+            }
+            
+            function showResultHTML(isValid, html) {
+                resultEl.innerHTML = html;
+                resultEl.style.display = 'block';
+                
+                if (isValid) {
+                    resultEl.className = 'result valid';
+                } else {
+                    resultEl.className = 'result invalid';
+                }
+            }
+            
+            function validateGTIN13(gtin) {
+                // GTIN-13 validation logic
+                let sum = 0;
+                for (let i = 0; i < 12; i++) {
+                    // Apply weight: 1 for even positions, 3 for odd positions (from right to left)
+                    const weight = (i % 2 === 0) ? 1 : 3;
+                    sum += parseInt(gtin[i]) * weight;
+                }
+                
+                // Calculate check digit
+                const calculatedCheckDigit = (10 - (sum % 10)) % 10;
+                const providedCheckDigit = parseInt(gtin[12]);
+                
+                // Compare calculated check digit with the provided one
+                return {
+                    isValid: calculatedCheckDigit === providedCheckDigit,
+                    correctCheckDigit: calculatedCheckDigit
+                };
+            }
+        });
+    </script>
+</body>
+</html>
